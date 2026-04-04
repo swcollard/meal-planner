@@ -188,6 +188,31 @@ The agent prompt instructs Claude to search for HEB weekly ads and seasonal prod
 - `ANTHROPIC_API_KEY` in `.env.local` (gitignored)
 - No other external services required
 
+## Project Setup & Tooling
+
+### .gitignore
+Standard Next.js gitignore plus:
+- `node_modules/`
+- `.next/`
+- `.env.local` (API key)
+- `data/` (local meal plan data — not checked in)
+- `.superpowers/`
+
+### Linting & Formatting
+- **ESLint**: Next.js default ESLint config (`eslint-config-next`) with TypeScript rules
+- **Prettier**: Configured for TypeScript, enforced on save
+  - Config in `.prettierrc` (single quotes, trailing commas, 2-space indent, or user preference)
+  - `.prettierignore` for `.next/`, `node_modules/`, `data/`
+- **lint-staged + husky**: Pre-commit hook runs ESLint + Prettier on staged files
+
+### Testing
+- **Jest** with `ts-jest` for unit testing business logic:
+  - Prompt assembly (form inputs → override string)
+  - JSON schema validation (Claude response parsing)
+  - File storage operations (read/write/list plans and journal entries)
+- **React Testing Library** for component tests if needed later
+- Test files co-located as `*.test.ts` next to source files
+
 ## Visual Mockups
 
 Brainstorming mockups saved in `.superpowers/brainstorm/` for reference:
