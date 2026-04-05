@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { query } from '@anthropic-ai/claude-agent-sdk';
 import { randomUUID } from 'crypto';
 import { assemblePrompt, SYSTEM_PROMPT } from '@/lib/prompt';
 import { savePlan } from '@/lib/storage';
@@ -8,12 +8,17 @@ import type { Plan, PlanFormInputs } from '@/lib/types';
 const DONE_TOKEN = '__PLAN_SAVED__';
 
 function parsePlanResponse(jsonText: string, inputs: PlanFormInputs): Plan {
-  // Strip markdown code fences if Claude wrapped the JSON anyway
+  // Strip markdown code fences if Claude wrapped the JSON
   const cleaned = jsonText
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/```\s*$/i, '')
     .trim();
-  const parsed = JSON.parse(cleaned);
+
+  // Extract JSON object from response — Claude may include text before/after
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No JSON object found in response');
+
+  const parsed = JSON.parse(jsonMatch[0]);
 
   return {
     id: randomUUID(),
@@ -37,51 +42,52 @@ function parsePlanResponse(jsonText: string, inputs: PlanFormInputs): Plan {
 
 export async function POST(request: NextRequest) {
   const inputs = (await request.json()) as PlanFormInputs;
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return new Response(
-      JSON.stringify({ error: 'ANTHROPIC_API_KEY not set. Add it to .env.local.' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } },
-    );
-  }
-
-  const anthropic = new Anthropic({ apiKey });
   const userPrompt = assemblePrompt(inputs);
 
   const encoder = new TextEncoder();
-  let fullText = '';
 
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const messageStream = anthropic.messages.stream({
-          model: 'claude-opus-4-6',
-          max_tokens: 8096,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: userPrompt }],
-          tools: [
-            { type: 'web_search_20250305', name: 'web_search', max_uses: 3 } as Parameters<
-              typeof anthropic.messages.stream
-            >[0]['tools'][0],
-          ],
-        });
+        controller.enqueue(encoder.encode('Searching for HEB sales and seasonal produce...\n'));
 
-        for await (const chunk of messageStream) {
-          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-            fullText += chunk.delta.text;
-            controller.enqueue(encoder.encode(chunk.delta.text));
+        let resultText = '';
+
+        for await (const message of query({
+          prompt: userPrompt,
+          options: {
+            systemPrompt: SYSTEM_PROMPT,
+            allowedTools: ['WebSearch', 'WebFetch'],
+            maxTurns: 15,
+            permissionMode: 'bypassPermissions',
+            allowDangerouslySkipPermissions: true,
+          },
+        })) {
+          if (message.type === 'system' && message.subtype === 'task_progress') {
+            controller.enqueue(encoder.encode('.'));
+          }
+          if ('result' in message) {
+            resultText = message.result;
           }
         }
 
-        // Parse and save the complete plan
+        if (!resultText) {
+          controller.enqueue(encoder.encode(`\n${DONE_TOKEN}:ERROR:No response from Claude`));
+          controller.close();
+          return;
+        }
+
+        controller.enqueue(encoder.encode('\nParsing meal plan...\n'));
+
+        // Parse and save the plan
         let planId: string;
         try {
-          const plan = parsePlanResponse(fullText, inputs);
+          const plan = parsePlanResponse(resultText, inputs);
           await savePlan(plan);
           planId = plan.id;
-        } catch {
-          controller.enqueue(encoder.encode(`\n${DONE_TOKEN}:ERROR`));
+        } catch (parseErr) {
+          const detail = parseErr instanceof Error ? parseErr.message : 'Failed to parse response';
+          controller.enqueue(encoder.encode(`\n${DONE_TOKEN}:ERROR:${detail}`));
           controller.close();
           return;
         }

@@ -96,10 +96,8 @@ export default function NewPlanPage() {
         <p className="text-sm text-gray-500">
           Claude is searching for HEB sales and seasonal produce. This takes about 30–60 seconds.
         </p>
-        <div className="animate-pulse text-sm font-mono text-gray-400">
-          {streamText
-            ? `${streamText.slice(0, 200)}${streamText.length > 200 ? '…' : ''}`
-            : 'Starting…'}
+        <div className="text-sm font-mono text-gray-400 whitespace-pre-line">
+          {streamText || 'Starting…'}
         </div>
       </div>
     );
@@ -112,12 +110,6 @@ export default function NewPlanPage() {
       {status === 'error' && (
         <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {errorMessage}
-        </div>
-      )}
-
-      {!process.env.NEXT_PUBLIC_HAS_API_KEY && (
-        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          Add your <code>ANTHROPIC_API_KEY</code> to <code>.env.local</code> to generate plans.
         </div>
       )}
 
