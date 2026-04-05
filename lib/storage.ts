@@ -3,16 +3,15 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import type { Plan, PlanSummary, Journal } from './types';
 
-export const DATA_DIR = process.env.MEAL_PLANNER_DATA_DIR ?? path.join(process.cwd(), 'data');
+export function getDataDir(): string {
+  return process.env.MEAL_PLANNER_DATA_DIR ?? path.join(process.cwd(), 'data');
+}
 
 function getPlansDir() {
-  return path.join(process.env.MEAL_PLANNER_DATA_DIR ?? path.join(process.cwd(), 'data'), 'plans');
+  return path.join(getDataDir(), 'plans');
 }
 function getJournalDir() {
-  return path.join(
-    process.env.MEAL_PLANNER_DATA_DIR ?? path.join(process.cwd(), 'data'),
-    'journal',
-  );
+  return path.join(getDataDir(), 'journal');
 }
 
 function ensureDirs() {
