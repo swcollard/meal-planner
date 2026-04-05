@@ -41,11 +41,11 @@ export function JournalSection({ planId, weekOf, initialEntries }: Props) {
       });
       if (res.ok) {
         setEntries(updatedEntries);
+        setEditingDay(null);
+        setDraftNote('');
       }
     } finally {
       setSaving(false);
-      setEditingDay(null);
-      setDraftNote('');
     }
   }
 
