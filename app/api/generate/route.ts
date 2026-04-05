@@ -10,7 +10,7 @@ const DONE_TOKEN = '__PLAN_SAVED__';
 function parsePlanResponse(jsonText: string, inputs: PlanFormInputs): Plan {
   // Strip markdown code fences if Claude wrapped the JSON anyway
   const cleaned = jsonText
-    .replace(/^```json\s*/i, '')
+    .replace(/^```(?:json)?\s*/i, '')
     .replace(/```\s*$/i, '')
     .trim();
   const parsed = JSON.parse(cleaned);
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       try {
         const messageStream = anthropic.messages.stream({
-          model: 'claude-sonnet-4-6',
+          model: 'claude-opus-4-6',
           max_tokens: 8096,
           system: SYSTEM_PROMPT,
           messages: [{ role: 'user', content: userPrompt }],
