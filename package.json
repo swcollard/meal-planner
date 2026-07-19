@@ -10,10 +10,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "jest",
-    "test:watch": "jest --watch",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "migrate": "node scripts/migrate-to-baerly.mjs",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -27,6 +28,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
+    "@gusto/baerly-storage": "^0.6.0",
     "next": "16.2.2",
     "react": "19.2.4",
     "react-dom": "19.2.4"
