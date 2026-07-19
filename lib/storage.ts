@@ -54,16 +54,14 @@ export async function listPlans(): Promise<PlanSummary[]> {
 
   return plans
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .map(
-      ({ id, weekOf, theme, createdAt, cookingProjects, meals }): PlanSummary => ({
-        id,
-        weekOf,
-        theme,
-        createdAt,
-        cookingProjects,
-        meals,
-      }),
-    );
+    .map(({ id, weekOf, theme, createdAt, cookingProjects, meals }): PlanSummary => ({
+      id,
+      weekOf,
+      theme,
+      createdAt,
+      cookingProjects,
+      meals,
+    }));
 }
 
 export async function saveJournal(input: Omit<Journal, 'id'>): Promise<Journal> {
