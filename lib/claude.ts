@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-export const MODEL = 'claude-opus-5-5';
+export const MODEL = 'claude-sonnet-5-5';
 
 const MAX_TOKENS = 64000;
 const MAX_CONTINUATIONS = 5;
