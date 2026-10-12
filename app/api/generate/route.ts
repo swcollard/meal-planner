@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
-import { query } from '@anthropic-ai/claude-agent-sdk';
 import { randomUUID } from 'crypto';
+import { generatePlanText } from '@/lib/claude';
 import { assemblePrompt, SYSTEM_PROMPT } from '@/lib/prompt';
 import { savePlan } from '@/lib/storage';
 import type { Plan, PlanFormInputs } from '@/lib/types';
@@ -51,25 +51,9 @@ export async function POST(request: NextRequest) {
       try {
         controller.enqueue(encoder.encode('Searching for HEB sales and seasonal produce...\n'));
 
-        let resultText = '';
-
-        for await (const message of query({
-          prompt: userPrompt,
-          options: {
-            systemPrompt: SYSTEM_PROMPT,
-            allowedTools: ['WebSearch', 'WebFetch'],
-            maxTurns: 15,
-            permissionMode: 'bypassPermissions',
-            allowDangerouslySkipPermissions: true,
-          },
-        })) {
-          if (message.type === 'system' && message.subtype === 'task_progress') {
-            controller.enqueue(encoder.encode('.'));
-          }
-          if ('result' in message) {
-            resultText = message.result;
-          }
-        }
+        const resultText = await generatePlanText(SYSTEM_PROMPT, userPrompt, () =>
+          controller.enqueue(encoder.encode('.')),
+        );
 
         if (!resultText) {
           controller.enqueue(encoder.encode(`\n${DONE_TOKEN}:ERROR:No response from Claude`));
