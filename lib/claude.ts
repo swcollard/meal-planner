@@ -19,12 +19,12 @@ export async function generatePlanText(
   }
 
   const client = new Anthropic();
-  const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: 'user', content: userPrompt }];
+  const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userPrompt }];
 
   // Server-side tool loops can hit the per-turn iteration limit and return `pause_turn`;
   // resuming means sending the assistant content back as-is.
   for (let attempt = 0; attempt <= MAX_CONTINUATIONS; attempt++) {
-    const stream = client.beta.messages.stream({
+    const stream = client.messages.stream({
       model: MODEL,
       max_tokens: MAX_TOKENS,
       system: systemPrompt,
@@ -38,9 +38,6 @@ export async function generatePlanText(
           user_location: { type: 'approximate', country: 'US', region: 'Texas' },
         },
       ],
-      // Retry on another model if the safety classifiers decline the request.
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
     });
 
     for await (const event of stream) {
