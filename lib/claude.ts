@@ -6,8 +6,8 @@ const MAX_TOKENS = 64000;
 const MAX_CONTINUATIONS = 5;
 
 /**
- * Runs the meal-plan prompt against the Claude API with server-side web search and
- * returns the model's final text. `onProgress` fires as searches start and text streams in.
+ * Runs the meal-plan prompt against the Claude API with server-side web search and fetch,
+ * and returns the model's final text. `onProgress` fires as each search or fetch starts.
  */
 export async function generatePlanText(
   systemPrompt: string,
@@ -36,6 +36,11 @@ export async function generatePlanText(
           name: 'web_search',
           max_uses: 10,
           user_location: { type: 'approximate', country: 'US', region: 'Texas' },
+        },
+        {
+          type: 'web_fetch_20260209',
+          name: 'web_fetch',
+          max_uses: 10,
         },
       ],
     });
