@@ -2,15 +2,19 @@
   "name": "meal-planner",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "jest",
-    "test:watch": "jest --watch",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "migrate": "node scripts/migrate-to-baerly.mjs",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -24,6 +28,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
+    "@gusto/baerly-storage": "^0.6.0",
     "next": "16.2.2",
     "react": "19.2.4",
     "react-dom": "19.2.4"
@@ -31,7 +36,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/jest": "^30.0.0",
-    "@types/node": "^20",
+    "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
@@ -41,7 +46,7 @@
     "jest": "^30.3.0",
     "jest-environment-node": "^30.3.0",
     "lint-staged": "^16.4.0",
-    "prettier": "^3.8.1",
+    "prettier": "^3.9.5",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.9",
     "typescript": "^5"

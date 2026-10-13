@@ -1,9 +1,11 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { savePlan, getPlan, listPlans, saveJournal, getJournal } from './storage';
+import { resetDbForTests } from './db';
 import type { Plan, Journal } from './types';
 
-const TEST_DATA_DIR = path.join(process.cwd(), 'data-test');
+let tmpDir: string;
 
 const mockPlan: Plan = {
   id: 'test-uuid-1234',
@@ -45,14 +47,15 @@ const mockJournal: Omit<Journal, 'id'> = {
 };
 
 beforeEach(() => {
-  process.env.MEAL_PLANNER_DATA_DIR = TEST_DATA_DIR;
-  fs.mkdirSync(path.join(TEST_DATA_DIR, 'plans'), { recursive: true });
-  fs.mkdirSync(path.join(TEST_DATA_DIR, 'journal'), { recursive: true });
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'meal-planner-test-'));
+  process.env.BAERLY_DATA_DIR = tmpDir;
+  resetDbForTests();
 });
 
 afterEach(() => {
-  delete process.env.MEAL_PLANNER_DATA_DIR;
-  fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+  delete process.env.BAERLY_DATA_DIR;
+  resetDbForTests();
+  fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
 describe('savePlan / getPlan', () => {
@@ -97,7 +100,7 @@ describe('listPlans', () => {
 
 describe('saveJournal / getJournal', () => {
   it('creates a new journal and retrieves it by planId', async () => {
-    const journal = await saveJournal(mockJournal);
+    await saveJournal(mockJournal);
     const retrieved = await getJournal(mockJournal.planId);
     expect(retrieved?.planId).toBe(mockJournal.planId);
     expect(retrieved?.entries).toEqual(mockJournal.entries);

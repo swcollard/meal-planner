@@ -1,101 +1,62 @@
-import fs from 'fs';
-import path from 'path';
 import { randomUUID } from 'crypto';
+import type { DocumentData } from '@gusto/baerly-storage';
+import { getDb } from './db';
 import type { Plan, PlanSummary, Journal } from './types';
 
-export function getDataDir(): string {
-  return process.env.MEAL_PLANNER_DATA_DIR ?? path.join(process.cwd(), 'data');
+// Our domain types are JSON-shaped but lack baerly's index signature, so we
+// cross the write boundary through `DocumentData`.
+function asDoc<T extends object>(value: T): DocumentData {
+  return value as unknown as DocumentData;
 }
 
-function getPlansDir() {
-  return path.join(getDataDir(), 'plans');
-}
-function getJournalDir() {
-  return path.join(getDataDir(), 'journal');
-}
-
-function ensureDirs() {
-  fs.mkdirSync(getPlansDir(), { recursive: true });
-  fs.mkdirSync(getJournalDir(), { recursive: true });
-}
-
-function planFileName(weekOf: string, id: string): string {
-  return path.join(getPlansDir(), `${weekOf}-${id}.json`);
-}
-
-function journalFileName(weekOf: string, id: string): string {
-  return path.join(getJournalDir(), `${weekOf}-${id}.json`);
+// baerly mints a server-side `_id` on every row; strip it so return shapes
+// match our own `Plan`/`Journal` types (which key off our own `id` field).
+function stripId<T>(doc: T & { _id?: string }): T {
+  const { _id, ...rest } = doc;
+  void _id;
+  return rest as T;
 }
 
 export async function savePlan(plan: Plan): Promise<void> {
-  ensureDirs();
-  const filePath = planFileName(plan.weekOf, plan.id);
-  fs.writeFileSync(filePath, JSON.stringify(plan, null, 2), 'utf-8');
+  await getDb().collection('plans').insert(asDoc(plan));
 }
 
 export async function getPlan(id: string): Promise<Plan | null> {
-  ensureDirs();
-  const files = fs.readdirSync(getPlansDir());
-  const file = files.find((f) => f.includes(id));
-  if (!file) return null;
-  const content = fs.readFileSync(path.join(getPlansDir(), file), 'utf-8');
-  return JSON.parse(content) as Plan;
+  const doc = await getDb().collection('plans').where({ id }).first();
+  return doc ? stripId(doc as unknown as Plan) : null;
 }
 
 export async function listPlans(): Promise<PlanSummary[]> {
-  ensureDirs();
-  const files = fs.readdirSync(getPlansDir());
-  const plans: Plan[] = files
-    .filter((f) => f.endsWith('.json'))
-    .map((f) => {
-      const content = fs.readFileSync(path.join(getPlansDir(), f), 'utf-8');
-      return JSON.parse(content) as Plan;
-    });
+  const docs = (await getDb().collection('plans').all()) as unknown as Plan[];
 
-  return plans
+  return docs
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .map(
-      ({ id, weekOf, theme, createdAt, cookingProjects, meals }): PlanSummary => ({
-        id,
-        weekOf,
-        theme,
-        createdAt,
-        cookingProjects,
-        meals,
-      }),
-    );
+    .map(({ id, weekOf, theme, createdAt, cookingProjects, meals }): PlanSummary => ({
+      id,
+      weekOf,
+      theme,
+      createdAt,
+      cookingProjects,
+      meals,
+    }));
 }
 
 export async function saveJournal(input: Omit<Journal, 'id'>): Promise<Journal> {
-  ensureDirs();
-  const existing = await getJournal(input.planId);
+  const existing = await getDb().collection('journal').where({ planId: input.planId }).first();
 
   if (existing) {
-    const updated: Journal = { ...existing, entries: input.entries };
-    const files = fs.readdirSync(getJournalDir());
-    const file = files.find((f) => f.includes(existing.id));
-    if (file) {
-      fs.writeFileSync(path.join(getJournalDir(), file), JSON.stringify(updated, null, 2), 'utf-8');
-    }
-    return updated;
+    await getDb()
+      .collection('journal')
+      .update(existing._id as string, asDoc({ entries: input.entries }));
+    return { ...stripId(existing as unknown as Journal), entries: input.entries };
   }
 
-  const journal: Journal = {
-    id: randomUUID(),
-    ...input,
-  };
-  const filePath = journalFileName(journal.weekOf, journal.id);
-  fs.writeFileSync(filePath, JSON.stringify(journal, null, 2), 'utf-8');
+  const journal: Journal = { id: randomUUID(), ...input };
+  await getDb().collection('journal').insert(asDoc(journal));
   return journal;
 }
 
 export async function getJournal(planId: string): Promise<Journal | null> {
-  ensureDirs();
-  const files = fs.readdirSync(getJournalDir());
-  for (const file of files) {
-    const content = fs.readFileSync(path.join(getJournalDir(), file), 'utf-8');
-    const journal = JSON.parse(content) as Journal;
-    if (journal.planId === planId) return journal;
-  }
-  return null;
+  const doc = await getDb().collection('journal').where({ planId }).first();
+  return doc ? stripId(doc as unknown as Journal) : null;
 }
